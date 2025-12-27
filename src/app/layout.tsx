@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
-import { SessionProvider } from "next-auth/react";
+import Providers from "@/components/Providers";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 
@@ -58,7 +58,7 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: Readonly<{
-    children: React.ReactNode;
+  children: React.ReactNode;
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
@@ -78,14 +78,14 @@ export default function RootLayout({
                   });
                 });
               }
-            `,
+           `,
           }}
         />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
-        <SessionProvider>
+        <Providers>
           <div className="min-h-screen flex flex-col">
             <Header />
             <main className="flex-1">
@@ -94,7 +94,7 @@ export default function RootLayout({
             <Footer />
           </div>
           <Toaster />
-        </SessionProvider>
+        </Providers>
       </body>
     </html>
   );

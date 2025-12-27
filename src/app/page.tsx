@@ -98,7 +98,7 @@ export default async function Home() {
 
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
               Discover Your Next
-              <br className="text-primary">Manga Adventure</br>
+              <span className="text-primary">Manga Adventure</span>
             </h1>
 
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">

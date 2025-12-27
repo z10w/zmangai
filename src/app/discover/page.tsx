@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Search, Filter, Grid, List } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 
-async function getDiscoverData(searchParams: URLSearchParams) {
+async function getDiscoverData(searchParams: Promise<URLSearchParams>) {
+  const searchParams = await searchParams
   const search = searchParams.get('search') || ''
   const genre = searchParams.get('genre') || undefined
   const type = searchParams.get('type') as 'MANGA' | 'MANHWA' | 'MANHUA' | null
@@ -88,14 +89,11 @@ export default async function Discover({
 }: {
   searchParams: Promise<URLSearchParams>
 }) {
-  const { series, total, page, limit } = await getDiscoverData(await searchParams)
+  const { series, total, page, limit } = await getDiscoverData(searchParams)
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      {/* Header included by layout */}
-
       <main className="flex-1">
-        {/* Page Header */}
         <section className="border-b bg-muted/50">
           <div className="container px-4 py-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -112,7 +110,6 @@ export default async function Discover({
                   />
                 </div>
               </div>
-
               <div className="flex items-center gap-2">
                 <Link href="/discover">
                   <Button variant="ghost" size="sm">
@@ -128,8 +125,11 @@ export default async function Discover({
                 </Link>
               </div>
             </div>
+          </div>
+        </section>
 
-            {/* Filters - basic inline version */}
+        <section className="py-8">
+          <div className="container px-4">
             <div className="flex flex-wrap gap-2 mt-4">
               <Link href="/discover">
                 <Button variant={type === null ? 'default' : 'outline'} size="sm">
@@ -152,10 +152,11 @@ export default async function Discover({
                 </Button>
               </Link>
             </div>
+          </div>
 
-            <div className="flex flex-wrap gap-2 mt-2">
-              <Link href="/discover">
-                <Button variant={status === null ? 'default' : 'outline'} size="sm">
+          <div className="flex flex-wrap gap-2 mt-2">
+            <Link href="/discover">
+              <Button variant={status === null ? 'default' : 'outline'} size="sm">
                   All Status
                 </Button>
               </Link>
@@ -170,10 +171,11 @@ export default async function Discover({
                 </Button>
               </Link>
             </div>
+          </div>
 
-            <div className="flex flex-wrap gap-2 mt-2">
-              <Link href="/discover">
-                <Button variant={sort === 'latest' ? 'default' : 'outline'} size="sm">
+          <div className="flex flex-wrap gap-2 mt-2">
+            <Link href="/discover">
+              <Button variant={sort === 'latest' ? 'default' : 'outline'} size="sm">
                   Latest
                 </Button>
               </Link>
@@ -189,10 +191,7 @@ export default async function Discover({
               </Link>
             </div>
           </div>
-        </section>
 
-        {/* Results */}
-        <section className="py-8">
           <div className="container px-4">
             {series.length === 0 ? (
               <div className="text-center py-16">
@@ -207,7 +206,6 @@ export default async function Discover({
                 <p className="text-sm text-muted-foreground mb-4">
                   Showing {total} series
                 </p>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   {series.map((s) => (
                     <SeriesCard
@@ -226,30 +224,24 @@ export default async function Discover({
                     />
                   ))}
                 </div>
-
-                {/* Pagination - Simple for now */}
                 {total > limit && (
                   <div className="flex justify-center items-center gap-4 mt-12">
-                    <Link
-                      href={{
-                        pathname: '/discover',
-                        query: page > 1 ? { ...Object.fromEntries(await searchParams), page: (page - 1).toString() } : undefined,
-                      }}
+                    <Link href={{
+                      pathname: '/discover',
+                      query: page > 1 ? { ...Object.fromEntries(searchParams), page: (page - 1).toString() } : undefined,
+                    }}
                     >
                       <Button variant="outline" disabled={page <= 1}>
                         Previous
                       </Button>
                     </Link>
-
                     <span className="text-sm text-muted-foreground">
                       Page {page} of {Math.ceil(total / limit)}
                     </span>
-
-                    <Link
-                      href={{
-                        pathname: '/discover',
-                        query: page * limit < total ? { ...Object.fromEntries(await searchParams), page: (page + 1).toString() } : undefined,
-                      }}
+                    <Link href={{
+                      pathname: '/discover',
+                      query: page * limit < total ? { ...Object.fromEntries(searchParams), page: (page + 1).toString() } : undefined,
+                    }}
                     >
                       <Button variant="outline" disabled={page * limit >= total}>
                         Next
@@ -262,8 +254,6 @@ export default async function Discover({
           </div>
         </section>
       </main>
-
-      {/* Footer included by layout */}
     </div>
   )
 }
