@@ -38,7 +38,7 @@ export default function ReaderPage({
   }
 }) {
   const router = useRouter()
-  const { seriesSlug, chapter } = params
+  const { seriesSlug, chapter } = await params
   const [mode, setMode] = useState<ReaderMode>(ReaderMode.VERTICAL)
   const [hideUI, setHideUI] = useState(false)
   const [imageQuality, setImageQuality] = useState<'LOW' | 'MEDIUM' | 'HIGH'>('HIGH')
@@ -476,7 +476,7 @@ export default function ReaderPage({
                   height={1200}
                   className="w-full h-auto"
                   priority={index < 3}
-                  placeholder="blur"
+                  placeholder="none"
                 />
               </div>
             ))}
@@ -498,7 +498,7 @@ export default function ReaderPage({
                   height={1200}
                   className="max-h-full w-auto object-contain"
                   priority={index < 3}
-                  placeholder="blur"
+                  placeholder="none"
                 />
               </div>
             ))}
