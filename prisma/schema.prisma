@@ -1,0 +1,493 @@
+// Manga/Manhwa Platform - Prisma Schema
+// Complete data model for production-ready manga platform
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum UserRole {
+  USER
+  CREATOR
+  MODERATOR
+  ADMIN
+}
+
+enum SeriesType {
+  MANGA
+  MANHWA
+  MANHUA
+}
+
+enum SeriesStatus {
+  ONGOING
+  COMPLETED
+  HIATUS
+  CANCELLED
+}
+
+enum ReadingStatus {
+  READING
+  COMPLETED
+  PLAN_TO_READ
+  DROPPED
+  ON_HOLD
+}
+
+enum NotificationType {
+  NEW_CHAPTER
+  FOLLOW_UPDATE
+  ADMIN_MESSAGE
+  SYSTEM
+}
+
+enum ReportType {
+  COMMENT
+  SERIES
+  CHAPTER
+  USER
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  RESOLVED
+  DISMISSED
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  BAN_USER
+  UNBAN_USER
+  DELETE_COMMENT
+  MUTE_USER
+  FEATURE_FLAG_CHANGE
+}
+
+enum ImageQuality {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+// ============================================
+// USER & AUTH
+// ============================================
+
+model User {
+  id                String   @id @default(cuid())
+  email             String   @unique
+  username          String   @unique
+  password          String   // bcrypt hash
+  avatar            String?
+  role              UserRole @default(USER)
+  bio               String?
+  isBanned          Boolean  @default(false)
+  isMuted           Boolean  @default(false)
+  mutedUntil        DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  series            Series[]
+  chapters          Chapter[]
+  comments          Comment[]
+  commentLikes      CommentLike[]
+  ratings           Rating[]
+  reviews           Review[]
+  follows           Follow[]
+  readingProgress   ReadingProgress[]
+  history           History[]
+  notifications     Notification[]
+  reports           Report[]
+  auditLogs         AuditLog[]
+  readerPreferences ReaderPreferences?
+}
+
+model ReaderPreferences {
+  id             String        @id @default(cuid())
+  userId         String        @unique
+  readingMode    ReadingMode   @default(VERTICAL)
+  direction      ReadingDirection @default(LTR)
+  imageQuality   ImageQuality  @default(HIGH)
+  backgroundColor String       @default("#1a1a1a")
+  pageGap        Int          @default(0)
+  hideUI         Boolean      @default(false)
+  autoScroll     Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum ReadingMode {
+  VERTICAL
+  PAGED
+}
+
+enum ReadingDirection {
+  LTR
+  RTL
+}
+
+// ============================================
+// CONTENT MODELS
+// ============================================
+
+model Series {
+  id              String        @id @default(cuid())
+  slug            String        @unique
+  title           String
+  alternativeTitles String?     // JSON array of alt titles
+  description     String        @default("")
+  coverImage      String
+  bannerImage     String?
+  author          String
+  artist          String?
+  type            SeriesType
+  status          SeriesStatus
+  language        String        @default("en")
+  isMature        Boolean       @default(false)
+  views           Int           @default(0)
+  followers       Int           @default(0)
+  rating           Float         @default(0)
+  ratingCount      Int           @default(0)
+  releaseDate     DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  // Relations
+  creatorId       String
+  creator         User          @relation(fields: [creatorId], references: [id])
+  genres          SeriesGenre[]
+  tags            SeriesTag[]
+  chapters        Chapter[]
+  follows         Follow[]
+  ratings         Rating[]
+  reviews         Review[]
+  reports         Report[]
+  history         History[]
+
+  @@index([slug])
+  @@index([creatorId])
+  @@index([type])
+  @@index([status])
+  @@index([views])
+  @@index([rating])
+  @@index([createdAt])
+}
+
+model Genre {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  series      SeriesGenre[]
+}
+
+model Tag {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  series      SeriesTag[]
+}
+
+model SeriesGenre {
+  id        String   @id @default(cuid())
+  seriesId  String
+  genreId   String
+
+  series    Series   @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  genre     Genre    @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@unique([seriesId, genreId])
+  @@index([seriesId])
+  @@index([genreId])
+}
+
+model SeriesTag {
+  id       String   @id @default(cuid())
+  seriesId String
+  tagId    String
+
+  series   Series   @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  tag      Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([seriesId, tagId])
+  @@index([seriesId])
+  @@index([tagId])
+}
+
+// ============================================
+// CHAPTER & PAGES
+// ============================================
+
+model Chapter {
+  id          String   @id @default(cuid())
+  seriesId    String
+  chapterNumber Int
+  title       String
+  volume      Int?     @default(0)
+  pageCount   Int      @default(0)
+  views       Int      @default(0)
+  isPublished Boolean  @default(false)
+  publishedAt DateTime?
+  scheduledFor DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  series      Series   @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id])
+  pages       Page[]
+  comments    Comment[]
+  progress    ReadingProgress[]
+  reports     Report[]
+
+  @@unique([seriesId, chapterNumber])
+  @@index([seriesId])
+  @@index([isPublished])
+  @@index([publishedAt])
+  @@index([views])
+}
+
+model Page {
+  id        String   @id @default(cuid())
+  chapterId String
+  imageUrl  String
+  order     Int
+  width     Int?
+  height    Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  chapter   Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@unique([chapterId, order])
+  @@index([chapterId])
+}
+
+// ============================================
+// USER INTERACTIONS
+// ============================================
+
+model Follow {
+  id        String   @id @default(cuid())
+  userId    String
+  seriesId  String
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  series    Series   @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, seriesId])
+  @@index([userId])
+  @@index([seriesId])
+}
+
+model ReadingProgress {
+  id              String   @id @default(cuid())
+  userId          String
+  chapterId       String
+  pageIndex       Int      @default(0)
+  scrollOffset    Float?   @default(0)
+  isCompleted     Boolean  @default(false)
+  lastReadAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chapter         Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, chapterId])
+  @@index([userId])
+  @@index([chapterId])
+  @@index([lastReadAt])
+}
+
+model History {
+  id        String   @id @default(cuid())
+  userId    String
+  seriesId  String
+  chapterId String?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  series    Series   @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([seriesId])
+  @@index([createdAt])
+}
+
+// ============================================
+// COMMENTS & RATINGS
+// ============================================
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  hasSpoiler Boolean @default(false)
+  isDeleted Boolean  @default(false)
+  deletedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chapterId String
+  chapter   Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  parentId  String?
+  parent    Comment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentReplies")
+  likes     CommentLike[]
+  reports   Report[]
+
+  @@index([userId])
+  @@index([chapterId])
+  @@index([parentId])
+  @@index([createdAt])
+}
+
+model CommentLike {
+  id        String   @id @default(cuid())
+  userId    String
+  commentId String
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, commentId])
+  @@index([userId])
+  @@index([commentId])
+}
+
+model Rating {
+  id        String   @id @default(cuid())
+  rating    Int      // 1-5 stars
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  seriesId  String
+  series    Series   @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, seriesId])
+  @@index([userId])
+  @@index([seriesId])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  content   String
+  hasSpoiler Boolean @default(false)
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  seriesId  String
+  series    Series   @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([seriesId])
+  @@index([createdAt])
+}
+
+// ============================================
+// NOTIFICATIONS & REPORTS
+// ============================================
+
+model Notification {
+  id        String           @id @default(cuid())
+  type      NotificationType
+  title     String
+  message   String
+  data      String?          // JSON for additional data
+  isRead    Boolean          @default(false)
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  // Relations
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+model Report {
+  id          String      @id @default(cuid())
+  type        ReportType
+  reason      String
+  description String
+  status      ReportStatus @default(PENDING)
+  reviewedBy  String?
+  reviewedAt  DateTime?
+  notes       String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relations
+  reporterId  String
+  reporter    User        @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  commentId   String?
+  comment     Comment?    @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  seriesId    String?
+  series      Series?     @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  chapterId   String?
+  chapter     Chapter?    @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@index([reporterId])
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+}
+
+// ============================================
+// AUDIT & LOGGING
+// ============================================
+
+model AuditLog {
+  id          String     @id @default(cuid())
+  action      AuditAction
+  entityType  String
+  entityId    String?
+  details     String?    // JSON
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime   @default(now())
+
+  // Relations
+  userId      String
+  user        User       @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([entityType])
+  @@index([createdAt])
+}
